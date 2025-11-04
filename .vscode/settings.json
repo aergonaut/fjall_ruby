@@ -1,0 +1,5 @@
+{
+  "rubyLsp.linters": [
+    "standard"
+  ]
+}

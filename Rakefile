@@ -19,6 +19,6 @@ task test: :spec
 task default: [:compile, :spec]
 
 desc "Open console with extension loaded"
-task :console => :compile do
+task console: :compile do
   exec "irb -r ./lib/fjall_ruby.rb"
 end
