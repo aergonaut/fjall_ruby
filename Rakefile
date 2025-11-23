@@ -10,6 +10,15 @@ GEMSPEC = Gem::Specification.load("fjall_ruby.gemspec")
 
 RbSys::ExtensionTask.new("fjall_ruby", GEMSPEC) do |ext|
   ext.lib_dir = "lib/fjall_ruby"
+
+  ext.cross_compile = true
+  ext.cross_platform = [
+    "x86_64-linux",
+    "aarch64-linux",
+    "x86_64-darwin",
+    "arm64-darwin",
+    "x64-mingw-ucrt"
+  ]
 end
 
 RSpec::Core::RakeTask.new(:spec)
