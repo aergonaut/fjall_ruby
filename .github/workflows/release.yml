@@ -1,0 +1,71 @@
+name: Gem Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  ci-data:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.fetch.outputs.result }}
+    steps:
+      - id: fetch
+        uses: oxidize-rb/actions/fetch-ci-data@v1
+        with:
+          stable-ruby-versions: |
+            exclude: []
+
+  test:
+    needs: ci-data
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        ruby: ${{ fromJSON(needs.ci-data.outputs.result).stable-ruby-versions }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oxidize-rb/actions/setup-ruby-and-rust@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - run: bundle exec rake compile
+      - run: bundle exec rake test
+
+  cross-compile:
+    needs: [test, ci-data]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ["x86_64-linux", "aarch64-linux", "x86_64-darwin", "arm64-darwin", "x64-mingw-ucrt"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.1"
+      - uses: oxidize-rb/actions/cross-gem@v1
+        with:
+          platform: ${{ matrix.platform }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: gem-${{ matrix.platform }}
+          path: pkg/*-${{ matrix.platform }}.gem
+
+  release:
+    needs: cross-compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: Move gems to pkg directory
+        run: |
+          mkdir -p pkg
+          find artifacts -name "*.gem" -exec mv {} pkg/ \;
+      - uses: rubygems/configure-rubygems-credentials@v1.0.0
+      - name: Publish to RubyGems
+        run: |
+          gem push pkg/*.gem
